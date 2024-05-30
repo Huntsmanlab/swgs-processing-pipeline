@@ -315,13 +315,13 @@ process MARKDUP_PE {
       -I ${bam_pe} \
       -O output_bams/${sample_id}_pe.pe.bwa.sorted.mkdup.bam \
       -M metrics_files/${sample_id}_pe.marked_duplicates.metrics.txt \
-      CREATE_INDEX=true
+      --CREATE_INDEX true
 
     java "-Xmx16g" -jar /usr/picard/picard.jar MarkDuplicates \
       -I ${bam_se} \
       -O output_bams/${sample_id}_se.se.merged.sorted.mkdup.bam \
       -M metrics_files/${sample_id}_se.marked_duplicates.metrics.txt \
-      CREATE_INDEX=true
+      --CREATE_INDEX true
     """
 }
 
@@ -578,7 +578,7 @@ workflow {
 
     if (params.runqdnaseq) {
         if (params.pairedend) {
-            bamlist = markdup_ch.map { tuple -> [tuple[1], tuple[2]] }
+            bamlist = markdup_ch.map { tuple -> [tuple[1], tuple[3]] }
         } else {
             bamlist = markdup_ch.map { tuple -> tuple[1] }
         }
@@ -587,7 +587,7 @@ workflow {
 
     if (params.runwisex) {
         if (params.pairedend) {
-            bamlist = markdup_ch.map { tuple -> [tuple[1], tuple[2]] }
+            bamlist = markdup_ch.map { tuple -> [tuple[1], tuple[3]] }
         } else {
             bamlist = markdup_ch.map { tuple -> tuple[1] }
         }
@@ -596,10 +596,10 @@ workflow {
 
     // Extract the file path from each tuple in the channel
     if (params.pairedend) {
-        metrics = markdup_ch.map { tuple -> [tuple[3], tuple[4]] }
+        metrics = markdup_ch.map { tuple -> [tuple[5], tuple[6]] }
         flagstats = indcovflag_ch.map { tuple -> [tuple[2], tuple[4]] }
     } else {
-        metrics = markdup_ch.map { tuple -> tuple[2] }
+        metrics = markdup_ch.map { tuple -> tuple[3] }
         flagstats = indcovflag_ch.map { tuple -> tuple[2] }
     }
     combined_ch = metrics.mix(flagstats, fastqc2_ch).collect()
