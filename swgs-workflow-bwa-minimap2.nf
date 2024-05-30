@@ -462,13 +462,13 @@ process CN_QDNA1 {
     val(bams)
 
     output:
-    path("relative_cns/qdnaseq")
+    path("relative_cns/qdnaseq/${binsize}")
 
     script:
     """
-    mkdir -p "relative_cns/qdnaseq"
+    mkdir -p "relative_cns/qdnaseq/${binsize}"
     printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
-    Rscript ${script} ${binsize} ${params.nthreads} relative_cns/qdnaseq bamfileslist.txt
+    Rscript ${script} ${binsize} ${params.nthreads} relative_cns/qdnaseq/${binsize} bamfileslist.txt
     rm bamfileslist.txt
     """
 }
