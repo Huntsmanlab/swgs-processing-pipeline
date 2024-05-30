@@ -502,7 +502,8 @@ process CN_WX1 {
 
         SAMPLE=\$(basename "\${FILE%%.*}")
 
-        WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/\${SAMPLE} --gender F --plot --bed
+        mkdir -p relative_cns/wisecondorx/\${SAMPLE}
+        WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
 
     done
 
@@ -511,7 +512,6 @@ process CN_WX1 {
 }
 
 workflow {
-
     // Make some channels for the needed params, reads files, and scripts
     binsizes_ch = Channel.from(params.binsizes)
     qdnaseq_script_ch = file("$projectDir/scripts/runQDNAseq.R")
