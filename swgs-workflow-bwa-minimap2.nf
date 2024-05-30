@@ -300,7 +300,9 @@ process MARKDUP_PE {
 
     output:
     tuple val(sample_id), path("output_bams/${sample_id}_pe.pe.bwa.sorted.mkdup.bam"), 
+    path("output_bams/${sample_id}_pe.pe.bwa.sorted.mkdup.bai"), 
     path("output_bams/${sample_id}_se.se.merged.sorted.mkdup.bam"), 
+    path("output_bams/${sample_id}_se.se.merged.sorted.mkdup.bai"), 
     path("metrics_files/${sample_id}_pe.marked_duplicates.metrics.txt"),
     path("metrics_files/${sample_id}_se.marked_duplicates.metrics.txt")
     
@@ -312,12 +314,14 @@ process MARKDUP_PE {
     java "-Xmx16g" -jar /usr/picard/picard.jar MarkDuplicates \
       -I ${bam_pe} \
       -O output_bams/${sample_id}_pe.pe.bwa.sorted.mkdup.bam \
-      -M metrics_files/${sample_id}_pe.marked_duplicates.metrics.txt
+      -M metrics_files/${sample_id}_pe.marked_duplicates.metrics.txt \
+      CREATE_INDEX=true
 
     java "-Xmx16g" -jar /usr/picard/picard.jar MarkDuplicates \
       -I ${bam_se} \
       -O output_bams/${sample_id}_se.se.merged.sorted.mkdup.bam \
-      -M metrics_files/${sample_id}_se.marked_duplicates.metrics.txt
+      -M metrics_files/${sample_id}_se.marked_duplicates.metrics.txt \
+      CREATE_INDEX=true
     """
 }
 
@@ -331,6 +335,7 @@ process MARKDUP_SE {
 
     output:
     tuple val(sample_id), path("output_bams/${sample_id}.se.bwa.sorted.mkdup.bam"), 
+    path("output_bams/${sample_id}.se.bwa.sorted.mkdup.bai"), 
     path("metrics_files/${sample_id}.marked_duplicates.metrics.txt")
     
     script:
@@ -340,7 +345,8 @@ process MARKDUP_SE {
     java "-Xmx16g" -jar /usr/picard/picard.jar MarkDuplicates \
       I=${bam} \
       O=output_bams/${sample_id}.se.bwa.sorted.mkdup.bam \
-      M=metrics_files/${sample_id}.marked_duplicates.metrics.txt
+      M=metrics_files/${sample_id}.marked_duplicates.metrics.txt \
+      CREATE_INDEX=true
     """
 }
 
@@ -349,7 +355,7 @@ process INDCOVFLAG_PE {
     tag "Re-index and sort (pe) on $sample_id"
     
     input:
-    tuple val(sample_id), path(bam_pe), path(bam_se), path(metrics_pe), path(metrics_se)
+    tuple val(sample_id), path(bam_pe), path(bai_pe), path(bam_se), path(bai_se), path(metrics_pe), path(metrics_se)
 
     output:
     tuple val(sample_id), 
@@ -377,7 +383,7 @@ process INDCOVFLAG_SE {
     tag "Re-index and sort (se) on $sample_id"
     
     input:
-    tuple val(sample_id), path(bam), path(metrics)
+    tuple val(sample_id), path(bam), path(bai), path(metrics)
 
     output:
     tuple val(sample_id), path("metrics_files/${sample_id}.se.coverageTable.tsv"), 
@@ -397,7 +403,7 @@ process FASTQC2_PE {
     tag "FASTQC (pe) on $sample_id"
 
     input:
-    tuple val(sample_id), path(bam_pe), path(bam_se), path(metrics_pe), path(metrics_se)
+    tuple val(sample_id), path(bam_pe), path(bai_pe), path(bam_se), path(bai_se), path(metrics_pe), path(metrics_se)
  
     output:
     path "post_alignment_fastqc_logs_${sample_id}"
@@ -414,7 +420,7 @@ process FASTQC2_SE {
     tag "FASTQC (se) on $sample_id"
 
     input:
-    tuple val(sample_id), path(bam), path(metrics)
+    tuple val(sample_id), path(bam), path(bai), path(metrics)
  
     output:
     path "post_alignment_fastqc_logs_${sample_id}"
@@ -463,6 +469,43 @@ process CN_QDNA1 {
     mkdir -p "relative_cns/qdnaseq"
     printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
     Rscript ${script} ${binsize} ${params.nthreads} relative_cns/qdnaseq bamfileslist.txt
+    rm bamfileslist.txt
+    """
+}
+
+// Call Copy-Numbers using WisecondorX
+process CN_WX1 {
+    publishDir params.outdir, mode:'copy'
+
+    input:
+    path(wx_ref)
+    val(bams)
+
+    output:
+    path("relative_cns/wisecondorx")
+
+    script:
+    """
+    mkdir -p "relative_cns/wisecondorx"
+    mkdir -p converts
+    printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
+
+    while read LINE; do
+
+        SAMPLE=\$(basename "\${LINE%%.*}")
+
+        WisecondorX convert \$LINE converts/\${SAMPLE}.npz
+
+    done < bamfileslist.txt
+
+    for FILE in converts/*; do
+
+        SAMPLE=\$(basename "\${FILE%%.*}")
+
+        WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/\${SAMPLE} --gender F --plot --bed
+
+    done
+
     rm bamfileslist.txt
     """
 }
@@ -542,9 +585,14 @@ workflow {
         CN_QDNA1(qdnaseq_script_ch, binsizes_ch, params.binannos, bamlist.collect())
     }
 
-    // if (params.runwisex) {
-    //     wisex_cns_ch = CN_WX1(wisex_script_ch, binsizes_ch)
-    // }
+    if (params.runwisex) {
+        if (params.pairedend) {
+            bamlist = markdup_ch.map { tuple -> [tuple[1], tuple[2]] }
+        } else {
+            bamlist = markdup_ch.map { tuple -> tuple[1] }
+        }
+        CN_WX1(params.wx_ref, bamlist.collect())
+    }
 
     // Extract the file path from each tuple in the channel
     if (params.pairedend) {
