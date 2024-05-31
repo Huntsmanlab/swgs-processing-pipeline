@@ -473,20 +473,56 @@ process CN_QDNA1 {
     """
 }
 
+// Reference creation for WisecondorX
+process WX_REF {
+    publishDir params.outdir, mode:'copy'
+
+    input:
+    path(normals)
+    val(binsize)
+    path(bams)
+
+    output:
+    val(binsize)
+    path("wx_references/reference_${binsize}kb.npz")
+
+    script: 
+    """
+        mkdir -p wx_references
+
+        if [${params.wx_newref_frombam}]; then
+            mkdir -p converts
+            for FILE in ${bams}/*; do
+
+                SAMPLE=\$(basename "\${FILE%%.*}")
+                WisecondorX convert \$FILE converts/\${SAMPLE}.npz --binsize ${binsize}000
+                NORMALS="converts"
+
+            done
+        else
+            NORMALS="${normals}"
+        fi
+
+        WisecondorX newref \$NORMALS/*.npz wx_references/reference_${binsize}kb.npz \
+        --binsize ${binsize}000 --cpus ${params.nthreads} --yfrac 1
+    """
+}
+
 // Call Copy-Numbers using WisecondorX
 process CN_WX1 {
     publishDir params.outdir, mode:'copy'
 
     input:
+    val(binsize)
     path(wx_ref)
     val(bams)
 
     output:
-    path("relative_cns/wisecondorx")
+    path("relative_cns/wisecondorx/${binsize}kb")
 
     script:
     """
-    mkdir -p "relative_cns/wisecondorx"
+    mkdir -p "relative_cns/wisecondorx/${binsize}kb"
     mkdir -p converts
     printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
 
@@ -494,7 +530,7 @@ process CN_WX1 {
 
         SAMPLE=\$(basename "\${LINE%%.*}")
 
-        WisecondorX convert \$LINE converts/\${SAMPLE}.npz
+        WisecondorX convert \$LINE converts/\${SAMPLE}.npz --binsize ${binsize}000
 
     done < bamfileslist.txt
 
@@ -502,8 +538,9 @@ process CN_WX1 {
 
         SAMPLE=\$(basename "\${FILE%%.*}")
 
-        mkdir -p relative_cns/wisecondorx/\${SAMPLE}
-        WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
+        mkdir -p relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}
+
+        WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
 
     done
 
@@ -514,6 +551,7 @@ process CN_WX1 {
 workflow {
     // Make some channels for the needed params, reads files, and scripts
     binsizes_ch = Channel.from(params.binsizes)
+    wx_bins_ch = Channel.from(params.wx_bins)
     qdnaseq_script_ch = file("$projectDir/scripts/runQDNAseq.R")
     wisex_script_ch = file("$projectDir/scripts/runQDNAseq.R")
     
@@ -591,7 +629,12 @@ workflow {
         } else {
             bamlist = markdup_ch.map { tuple -> tuple[1] }
         }
-        CN_WX1(params.wx_ref, bamlist.collect())
+        if (params.wx_newref) {
+            wx_ref_ch = WX_REF(params.wx_normals, wx_bins_ch, params.wx_nbams)
+            CN_WX1(wx_ref_ch, bamlist.collect())
+        } else {
+            CN_WX1(wx_bins_ch, params.wx_refs, bamlist.collect())
+        }
     }
 
     // Extract the file path from each tuple in the channel
