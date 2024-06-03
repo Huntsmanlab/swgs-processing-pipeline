@@ -462,13 +462,13 @@ process CN_QDNA1 {
     val(bams)
 
     output:
-    path("relative_cns/qdnaseq/${binsize}")
+    path("relative_cns/qdnaseq/${binsize}kb")
 
     script:
     """
-    mkdir -p "relative_cns/qdnaseq/${binsize}"
+    mkdir -p "relative_cns/qdnaseq/${binsize}kb"
     printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
-    Rscript ${script} ${binsize} ${params.nthreads} relative_cns/qdnaseq/${binsize} bamfileslist.txt
+    Rscript ${script} ${binsize}kb ${params.nthreads} relative_cns/qdnaseq/${binsize}kb bamfileslist.txt
     rm bamfileslist.txt
     """
 }
@@ -540,7 +540,11 @@ process CN_WX1 {
 
         mkdir -p relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}
 
-        WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
+        if [${params.wx_newref}]; then
+            WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
+        else
+            WisecondorX predict \$FILE ${wx_ref}/*${binsize}kb*.npz relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
+        fi
 
     done
 
@@ -551,7 +555,6 @@ process CN_WX1 {
 workflow {
     // Make some channels for the needed params, reads files, and scripts
     binsizes_ch = Channel.from(params.binsizes)
-    wx_bins_ch = Channel.from(params.wx_bins)
     qdnaseq_script_ch = file("$projectDir/scripts/runQDNAseq.R")
     wisex_script_ch = file("$projectDir/scripts/runQDNAseq.R")
     
@@ -630,10 +633,10 @@ workflow {
             bamlist = markdup_ch.map { tuple -> tuple[1] }
         }
         if (params.wx_newref) {
-            wx_ref_ch = WX_REF(params.wx_normals, wx_bins_ch, params.wx_nbams)
+            wx_ref_ch = WX_REF(params.wx_normals, binsizes_ch, params.wx_nbams)
             CN_WX1(wx_ref_ch, bamlist.collect())
         } else {
-            CN_WX1(wx_bins_ch, params.wx_refs, bamlist.collect())
+            CN_WX1(binsizes_ch, params.wx_refs, bamlist.collect())
         }
     }
 
