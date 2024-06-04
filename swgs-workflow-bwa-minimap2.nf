@@ -475,8 +475,6 @@ process CN_QDNA1 {
 
 // Reference creation for WisecondorX
 process WX_REF {
-    publishDir params.outdir, mode:'copy'
-
     input:
     path(normals)
     val(binsize)
@@ -484,27 +482,36 @@ process WX_REF {
 
     output:
     val(binsize)
-    path("wx_references/reference_${binsize}kb.npz")
+    path("wx_references")
 
     script: 
     """
         mkdir -p wx_references
 
-        if [${params.wx_newref_frombam}]; then
+        if [ ${params.wx_newref_frombam} ]; then
             mkdir -p converts
-            for FILE in ${bams}/*; do
+            for FILE in ${bams}/*.bam; do
 
                 SAMPLE=\$(basename "\${FILE%%.*}")
-                WisecondorX convert \$FILE converts/\${SAMPLE}.npz --binsize ${binsize}000
-                NORMALS="converts"
+                if [[ \$FILE == *".pe."* ]]; then
+                    WisecondorX convert \$FILE converts/\${SAMPLE}.pe.npz --binsize ${binsize}000
+                else
+                    WisecondorX convert \$FILE converts/\${SAMPLE}.se.npz --binsize ${binsize}000
+                fi
 
             done
+            NORMALS="converts"
         else
             NORMALS="${normals}"
         fi
 
-        WisecondorX newref \$NORMALS/*.npz wx_references/reference_${binsize}kb.npz \
+        WisecondorX newref \$NORMALS/*.se.npz wx_references/reference_${binsize}kb.se.npz \
         --binsize ${binsize}000 --cpus ${params.nthreads} --yfrac 1
+
+        if [ ${params.pairedend} ]; then
+            WisecondorX newref \$NORMALS/*.pe.npz wx_references/reference_${binsize}kb.pe.npz \
+            --binsize ${binsize}000 --cpus ${params.nthreads} --yfrac 1
+        fi
     """
 }
 
@@ -540,10 +547,10 @@ process CN_WX1 {
 
         mkdir -p relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}
 
-        if [${params.wx_newref}]; then
-            WisecondorX predict \$FILE ${wx_ref} relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
+        if [[ \$FILE == *"pe."* ]]; then
+            WisecondorX predict \$FILE ${wx_ref}/*${binsize}kb*.pe.npz relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
         else
-            WisecondorX predict \$FILE ${wx_ref}/*${binsize}kb*.npz relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
+            WisecondorX predict \$FILE ${wx_ref}/*${binsize}kb*.se.npz relative_cns/wisecondorx/${binsize}kb/\${SAMPLE}/\${SAMPLE} --gender F --plot --bed
         fi
 
     done
