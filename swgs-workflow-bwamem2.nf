@@ -421,6 +421,7 @@ process MARKDUP_SE {
 // Calculating a few samtools alignment metrics (pe)
 process INDCOVFLAG_PE {
     tag "Re-index and sort (pe) on $sample_id"
+    publishDir params.outdir, mode:'copy'
     
     input:
     tuple val(sample_id), path(bam_pe), path(bai_pe), path(bam_se), path(bai_se), path(metrics_pe), path(metrics_se)
@@ -449,6 +450,7 @@ process INDCOVFLAG_PE {
 // Calculating a few samtools alignment metrics (se)
 process INDCOVFLAG_SE {
     tag "Re-index and sort (se) on $sample_id"
+    publishDir params.outdir, mode:'copy'
     
     input:
     tuple val(sample_id), path(bam), path(bai), path(metrics)
