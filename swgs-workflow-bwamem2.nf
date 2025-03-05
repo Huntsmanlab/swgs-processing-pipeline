@@ -698,9 +698,10 @@ process ICHOR_CNA {
     tuple val(binsize), val(sample_id), val(bamtype), path(bam), path(bamindex)
 
     output:
-    path "relative_cns/ichorCNA/${bamtype}kb/${binsize}/${sample_id}/*"    
-    path "relative_cns/ichorCNA/${bamtype}kb/${binsize}/${sample_id}/**/*"
-
+    tuple path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.correctedDepth.txt"), path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}//${sample_id}.seg"), val(sample_id), val(bamtype), val(binsize), emit: results
+    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/*"
+    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/**/*"
+ 
     script:
     def binsize_bases = binsize.toInteger() * 1000
     def centromere_file
@@ -713,18 +714,18 @@ process ICHOR_CNA {
     mkdir -p "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/"
     bamindex_file=`readlink -f "${bamindex}"`
     bam_file=`readlink -f "${bam}"`
-    cp -f \${bamindex_file} \${bamindex_file%.bai}.bam.bai
+    cp -f \${bamindex_file} \${bamindex_file%.bai}.bam.bai    
 
-    /usr/local/bin/readCounter --window "${binsize_bases}" --quality 20 \
+    readCounter --window "${binsize_bases}" --quality 20 \
     --chromosome "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,X" \
     \${bam_file} > "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.readcounts.wig"
     
-    Rscript /ichorCNA/scripts/runIchorCNA.R \
+    Rscript /usr/local/bin/runIchorCNA.R \
     --id "${sample_id}" \
     --WIG "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.readcounts.wig" \
-    --gcWig "/ichorCNA/inst/extdata/gc_${params.genome}_${binsize}kb.wig" \
-    --mapWig "/ichorCNA/inst/extdata/map_${params.genome}_${binsize}kb.wig" \
-    --centromere "/ichorCNA/inst/extdata/${centromere_file}" \
+    --gcWig "/usr/local/bin/ichorCNA/inst/extdata/gc_${params.genome}_${binsize}kb.wig" \
+    --mapWig "/usr/local/bin/ichorCNA/inst/extdata/map_${params.genome}_${binsize}kb.wig" \
+    --centromere "/usr/local/bin/ichorCNA/inst/extdata/${centromere_file}" \
     --ploidy "${params.ichor_ploidy}"  --normal "${params.ichor_normal}" \
     --maxCN "${params.ichor_maxCN}" \
     --minMapScore 0.75 \
@@ -735,6 +736,42 @@ process ICHOR_CNA {
     """
 }
 
+process PROCESS_ICHOR {
+    publishDir params.outdir, mode:'copy'
+
+    input: 
+    path(script)
+    tuple path(bins_file), path(segs_file), val(sample_id), val(bamtype), val(binsize)
+
+    output:
+    tuple val(bamtype), val(binsize), path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/results/${sample_id}_rCN.tsv")
+    
+    script:
+    """
+    mkdir -p "relative_cns/ichorCNA/${bamtype}/${binsize}kb/results"
+    Rscript ${script} ${sample_id} ${bins_file} ${segs_file} "relative_cns/ichorCNA/${bamtype}/${binsize}kb/results/" ${params.genome}     
+    """
+}
+
+process COMBINE_ICHOR {
+    publishDir params.outdir, mode:'copy'
+
+    input:
+    tuple val(bamtype), val(binsize), path(tsv_files)
+
+    output:
+    path "relative_cns/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
+
+    script:
+    """
+    mkdir -p "relative_cns/ichorCNA/combined_results/"
+    head -n 1 ${tsv_files[0]} > "relative_cns/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
+    for FILE in ${tsv_files}; do
+	tail -n +2 \$FILE >> "relative_cns/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
+    done
+    """
+}
+
 workflow {
     // Make some channels for the needed params, reads files, and scripts
     binsizes_ch = Channel.from(params.binsizes)
@@ -742,6 +779,7 @@ workflow {
     acn_script_ch = file("$projectDir/scripts/runACN.R")
     qdna_bins_script_ch = file("$projectDir/scripts/gen_bin_annot.R")
     azure_script_ch = file("$projectDir/scripts/downloadAZ.R")
+    ichor_script_ch = file ("$projectDir/scripts/process_ichor.R")
 
     if (params.from_azure) {
         az_ch = AZURE_DOWNLOAD(azure_script_ch)
@@ -847,10 +885,17 @@ workflow {
             bamlist = markdup_ch.map { vals -> [[vals[0], "pe", vals[1], vals[2]], [vals[0], "se", vals[3], vals[4]]] }.flatMap()
 	    bams_ch = binsizes_ch.combine(bamlist).groupTuple(by: 3).transpose()  
 	    ICHOR_CNA(bams_ch)
+	    PROCESS_ICHOR(ichor_script_ch, ICHOR_CNA.out.results) 
+	    tsv_ch = PROCESS_ICHOR.out.groupTuple(by: [0, 1])
+            COMBINE_ICHOR(tsv_ch)
+	    
         } else {
             bamlist = markdup_ch.map { vals -> [vals[0], "se", vals[1], vals[2]] } 
 	    bams_ch = binsizes_ch.combine(bamlist).groupTuple(by: 3).transpose()
 	    ICHOR_CNA(bams_ch)
+	    PROCESS_ICHOR(ichor_script_ch, ICHOR_CNA.out.results)
+	    tsv_ch = PROCESS_ICHOR.out.groupTuple(by: [0, 1])
+	    COMBINE_ICHOR(tsv_ch)
         }
     }
 
