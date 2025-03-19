@@ -559,7 +559,8 @@ process CN_QDNA1 {
     mkdir -p "relative_cns/qdnaseq/${bam_type}/${binsize}kb"
     printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
     shopt -s nocaseglob extglob
-    Rscript ${script} ${binsize}kb ${task.cpus} relative_cns/qdnaseq/${bam_type}/${binsize}kb bamfileslist.txt ${binannos_dir}/*@(${binsize}kb|${bam_type})*@(${binsize}kb|${bam_type})*.rds
+    printf "${params.nthreads}"
+    Rscript ${script} ${binsize}kb ${params.nthreads} relative_cns/qdnaseq/${bam_type}/${binsize}kb bamfileslist.txt ${binannos_dir}/*@(${binsize}kb|${bam_type})*@(${binsize}kb|${bam_type})*.rds
     rm bamfileslist.txt
     """
 }
@@ -698,7 +699,7 @@ process ICHOR_CNA {
     tuple val(binsize), val(sample_id), val(bamtype), path(bam), path(bamindex)
 
     output:
-    tuple path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.correctedDepth.txt"), path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}//${sample_id}.seg"), val(sample_id), val(bamtype), val(binsize), emit: results
+    tuple path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.correctedDepth.txt"), path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.seg"), val(sample_id), val(bamtype), val(binsize), emit: results
     path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/*"
     path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/**/*"
  
@@ -714,7 +715,7 @@ process ICHOR_CNA {
     mkdir -p "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/"
     bamindex_file=`readlink -f "${bamindex}"`
     bam_file=`readlink -f "${bam}"`
-    cp -f \${bamindex_file} \${bamindex_file%.bai}.bam.bai    
+    flock --verbose --wait 120 -E 3 "\${bamindex_file}.lock" cp -n \${bamindex_file} \${bamindex_file%.bai}.bam.bai    
 
     readCounter --window "${binsize_bases}" --quality 20 \
     --chromosome "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,X" \
@@ -760,7 +761,7 @@ process COMBINE_ICHOR {
     tuple val(bamtype), val(binsize), path(tsv_files)
 
     output:
-    path "relative_cns/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
+    path "relative_cns/ichorCNA/combined_results/ichor_combined_${binsize}kb_${bamtype}_rCN.tsv"
 
     script:
     """

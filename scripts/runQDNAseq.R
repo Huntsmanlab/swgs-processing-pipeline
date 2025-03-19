@@ -18,13 +18,15 @@ if (length(args) < 1) {
     stop("Please provide the required input.")
 } else {
     binsize <- args[1]
-    nthreads <- args[2]
+    nthreads <- as.integer(args[2])
     output_path <- args[3]
     bamfileslist <- args[4]
     bin_annos <- args[5]
 }
 
 future::plan("multisession", workers=nthreads)
+# set max total size of defined global variables to 1 GiB
+options(future.globals.maxSize = 1024^3)
 
 # Read-in bams list
 # assume bams have been saved to output_bams folder 

@@ -16,7 +16,7 @@ if (length(args) < 5) {
   bins_file <- args[2]
   segs_file <- args[3]
   out_dir <- args[4]
-  genome = args[5]
+  genome <- args[5]
 }
 
 # read in relative CN per bins and segments
