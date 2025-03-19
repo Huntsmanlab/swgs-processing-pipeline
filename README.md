@@ -25,7 +25,7 @@ This pipeline will cover the following pre-processing steps:
 9. Aggregation of this second round of QC reports for each sample into a single report. (MultiQC)
 
 Analysis:
-1. Relative copy number analysis (QDNAseq or WisecondorX)
+1. Relative copy number analysis (QDNAseq, WisecondorX or ichorCNA)
 2. Absolute copy number scaling (utanos, which utilizes [rascal](https://github.com/crukci-bioinformatics/rascal?tab=readme-ov-file))
 
 ### Visual representation of pipeline execution (DAG)
@@ -190,7 +190,7 @@ It's contents will include:
 4. A folder named `relative_cns` containing the results of CNV analysis. Files are divided into folders based on the tool used (QDNAseq, WisecondorX or ichorCNA), single- or paired-end, and bin size. 
    Details on WisecondorX outputs can be found [here.](https://github.com/CenterForMedicalGeneticsGhent/WisecondorX?tab=readme-ov-file#interpretation-results)
    QDNAseq outputs contain QDNAseq and CGHcall objects stored as RDS files, for both with and without the X chromosome. The `rcn_plots` folder contains the relative copy number profiles for each sample.
-   Details on ichorCNA outputs can be found [here.](https://github.com/broadinstitute/ichorCNA/wiki/Output). In addition to the standard ichorCNA outputs, a relative copy-number summary .tsv file is generated for each sample. A combined summary file is also provided for all samples, organized by single-end or paired-end reads and bin size. This file includes the following columns: sample_id, chromosome, start, ratio (log2 ratio per bin), and ratio_median (log2 ratio per segment).
+   Details on ichorCNA outputs can be found [here.](https://github.com/broadinstitute/ichorCNA/wiki/Output) In addition to the standard ichorCNA outputs, a relative copy-number summary .tsv file is generated for each sample. A combined summary file is also provided for all samples, organized by single-end or paired-end reads and bin size. This file includes the following columns: sample_id, chromosome, start, ratio (log2 ratio per bin), and ratio_median (log2 ratio per segment).
 
 6. A folder named `absolute_cns` containing the results of absolute copy number scaling from the relative copy number results. Files are divided into folders based on the tool used for rCN analysis (QDNAseq or WisecondorX), single- or paired-end, and bin size.
    QDNAseq objects containing absolute copy numbers are stored as RDS files. Best-fitting and chosen solutions (ploidy and cellularity) are stored in CSV files. The `acn_plots` folder contains the absolute copy number profiles for each sample.
