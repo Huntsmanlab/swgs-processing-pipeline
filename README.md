@@ -142,6 +142,13 @@ Each parameter in [General](#General) must be specified. Only parameters for the
 - `wx_normals` - path to normal .npz files for reference generation. Files must have '.se' or '.pe' as part of the file extension, indicating single- vs paired-end. Paired-end mode expects both single- and paired-end files. 
 - `wx_nbams` - path to normal bam files for reference generatoin. Files must have '.se' or '.pe' as part of the file extension, indicating single- vs paired-end. Paired-end mode expects both single- and paired-end bams.
 
+#### ichorCNA
+- `runichor` - setting to `true` will perform copy-number analysis using ichorCNA tool - see: https://github.com/broadinstitute/ichorCNA
+
+- `ichor_ploidy` - tumor ploidy initialization(s) 
+- `ichor_normal` - normal proportion initialization(s)
+-  `ichor_maxCN` - total clonal copy number states 
+
 ## Input
 - This pipeline expects single-end or paired-end raw short-read sequencing as input (ex. from Illumina). The reads are expected in `fastq` formated files with any one of the following extensions: `XXX.fastq` | `XXX.fastq.gz` | `XXX.fq` | `XXX.fq.gz`  
 - This pipeline expects **one file** per sample for single-end data, and **two files** for paired-end data. For paired-end, file names should indicate forward vs reverse read.
@@ -180,18 +187,19 @@ It's contents will include:
    Aligned reads will be in the `bam` format along with their associated `bai` file. More details on their formatting can be found on the [wikipedia page](https://en.wikipedia.org/wiki/Binary_Alignment_Map).
    Also contained within these folders are files named like such: `XXX.marked_duplicates.metrics.txt`, they contain metrics about the number of duplicated reads in each sample.
 
-3. A folder named `relative_cns` containing the results of CNV analysis. Files are divided into folders based on the tool used (QDNAseq or WisecondorX), single- or paired-end, and bin size. 
+4. A folder named `relative_cns` containing the results of CNV analysis. Files are divided into folders based on the tool used (QDNAseq, WisecondorX or ichorCNA), single- or paired-end, and bin size. 
    Details on WisecondorX outputs can be found [here.](https://github.com/CenterForMedicalGeneticsGhent/WisecondorX?tab=readme-ov-file#interpretation-results)
    QDNAseq outputs contain QDNAseq and CGHcall objects stored as RDS files, for both with and without the X chromosome. The `rcn_plots` folder contains the relative copy number profiles for each sample.
+   Details on ichorCNA outputs can be found [here.](https://github.com/broadinstitute/ichorCNA/wiki/Output). In addition to the standard ichorCNA outputs, a relative copy-number summary .tsv file is generated for each sample. A combined summary file is also provided for all samples, organized by single-end or paired-end reads and bin size. This file includes the following columns: sample_id, chromosome, start, ratio (log2 ratio per bin), and ratio_median (log2 ratio per segment).
 
-4. A folder named `absolute_cns` containing the results of absolute copy number scaling from the relative copy number results. Files are divided into folders based on the tool used for rCN analysis (QDNAseq or WisecondorX), single- or paired-end, and bin size.
+6. A folder named `absolute_cns` containing the results of absolute copy number scaling from the relative copy number results. Files are divided into folders based on the tool used for rCN analysis (QDNAseq or WisecondorX), single- or paired-end, and bin size.
    QDNAseq objects containing absolute copy numbers are stored as RDS files. Best-fitting and chosen solutions (ploidy and cellularity) are stored in CSV files. The `acn_plots` folder contains the absolute copy number profiles for each sample.
 
 ## Extras
 
 ### Troubleshooting
 In order for this pipeline to work as expected, the software installations must be done properly. 
-This is especially important for singularity and nextflow (they have many dependencies and are compplex pieces of software).  
+This is especially important for singularity and nextflow (they have many dependencies and are complex pieces of software).  
 For example, on one of the testing machines used in developing this pipeline the following commands were needed for singularity to run as expected:  
 `source /cvmfs/soft.computecanada.ca/config/profile/bash.sh`  
 `module load apptainer`  
@@ -210,11 +218,12 @@ If needed, specify the `NXF_JAVA_HOME` environment variable with a path to the d
 `docker://broadinstitute/picard:latest`  
 `docker://staphb/samtools:1.19`  
 `docker://staphb/fastqc:latest`  
-`docker://asntech/qdnaseq:v1.26.0`  
 `docker://sofvdvel/wisecondorx:0.1`    
-`docker://dinguwu/utanos:v0.2`   
-`docker://dinguwu/qdnaseq:v0.1`  
-`docker://dinguwu/azurestor:v0.1`   
+`docker://huntsmanlab/azure_download:lastest`   
+`docker://huntsmanlab/utanos:latest`
+`docker://huntsmanlab/utanos_branch:latest`
+`docker://huntsmanlab/qdnaseq:latest`
+`docker://huntsmanlab/ichorcna:latest`
 
 ### References
 
