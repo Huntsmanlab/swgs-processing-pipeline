@@ -559,8 +559,7 @@ process CN_QDNA1 {
     mkdir -p "relative_cns/qdnaseq/${bam_type}/${binsize}kb"
     printf '%s\n' "${bams.join('\n')}" > bamfileslist.txt
     shopt -s nocaseglob extglob
-    printf "${params.nthreads}"
-    Rscript ${script} ${binsize}kb ${params.nthreads} relative_cns/qdnaseq/${bam_type}/${binsize}kb bamfileslist.txt ${binannos_dir}/*@(${binsize}kb|${bam_type})*@(${binsize}kb|${bam_type})*.rds
+    Rscript ${script} ${binsize}kb ${task.cpus} relative_cns/qdnaseq/${bam_type}/${binsize}kb bamfileslist.txt ${binannos_dir}/*@(${binsize}kb|${bam_type})*@(${binsize}kb|${bam_type})*.rds
     rm bamfileslist.txt
     """
 }
@@ -693,6 +692,7 @@ process RCN_TO_ACN_WX {
 }
 
 process ICHOR_CNA {
+    tag "ichorCNA ($bamtype) on $sample_id"
     publishDir params.outdir, mode:'copy'   
  
     input: 
@@ -738,6 +738,7 @@ process ICHOR_CNA {
 }
 
 process PROCESS_ICHOR {
+    tag "Process ichor ($bamtype) on $sample_id"
     publishDir params.outdir, mode:'copy'
 
     input: 
@@ -755,6 +756,7 @@ process PROCESS_ICHOR {
 }
 
 process COMBINE_ICHOR {
+    tag "Combine ichor $bamtype $binsize"
     publishDir params.outdir, mode:'copy'
 
     input:
@@ -766,7 +768,7 @@ process COMBINE_ICHOR {
     script:
     """
     mkdir -p "relative_cns/ichorCNA/combined_results/"
-    head -n 1 ${tsv_files[0]} > "relative_cns/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
+    head -n 1 ${tsv_files[0]} > "relative_cns/ichorCNA/combined_results/ichor_combined_${binsize}kb_${bamtype}_rCN.tsv"
     for FILE in ${tsv_files}; do
 	tail -n +2 \$FILE >> "relative_cns/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
     done
@@ -780,7 +782,7 @@ workflow {
     acn_script_ch = file("$projectDir/scripts/runACN.R")
     qdna_bins_script_ch = file("$projectDir/scripts/gen_bin_annot.R")
     azure_script_ch = file("$projectDir/scripts/downloadAZ.R")
-    ichor_script_ch = file ("$projectDir/scripts/process_ichor.R")
+    ichor_script_ch = file("$projectDir/scripts/process_ichor.R")
 
     if (params.from_azure) {
         az_ch = AZURE_DOWNLOAD(azure_script_ch)
