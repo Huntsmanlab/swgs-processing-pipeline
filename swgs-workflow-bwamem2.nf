@@ -172,7 +172,7 @@ process TRIMMOMATIC_PE {
                 trimmed/${sample_id}.f.unpaired.fastq \
                 trimmed/${sample_id}.r.paired.fastq \
                 trimmed/${sample_id}.r.unpaired.fastq \
-                ILLUMINACLIP:/Trimmomatic-0.39/adapters/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads \
+                ILLUMINACLIP:/Trimmomatic-0.39/adapters/TruSeq3-PE-2.fa:2:30:10:2:true \
                 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 MAXINFO:100:0.5 CROP:50
         else
             trimmomatic PE -threads ${task.cpus} -phred33 $reads \
@@ -180,7 +180,7 @@ process TRIMMOMATIC_PE {
                 trimmed/${sample_id}.f.unpaired.fastq \
                 trimmed/${sample_id}.r.paired.fastq \
                 trimmed/${sample_id}.r.unpaired.fastq \
-                ILLUMINACLIP:/Trimmomatic-0.39/adapters/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads \
+                ILLUMINACLIP:/Trimmomatic-0.39/adapters/TruSeq3-PE-2.fa:2:30:10:2:true \
                 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 MAXINFO:100:0.5
         fi
         """
