@@ -886,8 +886,9 @@ workflow {
     if (params.runichor) {
 	if (params.pairedend) {
             bamlist = markdup_ch.map { vals -> [[vals[0], "pe", vals[1], vals[2]], [vals[0], "se", vals[3], vals[4]]] }.flatMap()
-	    bams_ch = binsizes_ch.combine(bamlist).groupTuple(by: 3).transpose()  
-	    ICHOR_CNA(bams_ch)
+	    bams_ch = binsizes_ch.combine(bamlist).groupTuple(by: 3).transpose()
+            bams_ch_filtered = bams_ch.filter { val -> val[0] in [10, 50, 500, 1000] } 
+	    ICHOR_CNA(bams_ch_filtered)
 	    PROCESS_ICHOR(ichor_script_ch, ICHOR_CNA.out.results) 
 	    tsv_ch = PROCESS_ICHOR.out.groupTuple(by: [0, 1])
             COMBINE_ICHOR(tsv_ch)
@@ -895,8 +896,9 @@ workflow {
         } else {
             bamlist = markdup_ch.map { vals -> [vals[0], "se", vals[1], vals[2]] } 
 	    bams_ch = binsizes_ch.combine(bamlist).groupTuple(by: 3).transpose()
-	    ICHOR_CNA(bams_ch)
-	    PROCESS_ICHOR(ichor_script_ch, ICHOR_CNA.out.results)
+            bams_ch_filtered = bams_ch.filter { val -> val[0] in [10, 50, 500, 1000] }
+            ICHOR_CNA(bams_ch_filtered)	    
+            PROCESS_ICHOR(ichor_script_ch, ICHOR_CNA.out.results)
 	    tsv_ch = PROCESS_ICHOR.out.groupTuple(by: [0, 1])
 	    COMBINE_ICHOR(tsv_ch)
         }
