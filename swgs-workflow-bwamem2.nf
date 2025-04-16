@@ -99,18 +99,22 @@ process DOWNLOAD_HG38 {
 // Pre-alignment QC
 process FASTQC1 {
     tag "FASTQC on $sample_id"
+    publishDir params.outdir, mode:'copy', pattern: 'reports/pre_alignment_fastqc_reports/*'
 
     input:
-    tuple val(sample_id), path(reads)
- 
+    tuple val(sample_id), path(reads) 
+
     output:
-    path "fastqc_${sample_id}_logs"
- 
+    path "fastqc_${sample_id}_logs", emit: logs
+    path "reports/pre_alignment_fastqc_reports/*" 
+
     script:
     """
     TEMP=\$(mktemp -d --tmpdir=.)
     mkdir fastqc_${sample_id}_logs
+    mkdir -p reports/pre_alignment_fastqc_reports
     env _JAVA_OPTIONS='-XX:-UsePerfData' fastqc --dir \$TEMP -o fastqc_${sample_id}_logs -f fastq $reads
+    cp fastqc_${sample_id}_logs/${sample_id}_*fastqc.html reports/pre_alignment_fastqc_reports/
     """
 }
 
@@ -471,36 +475,44 @@ process INDCOVFLAG_SE {
 // Post-alignment QC (pe)
 process FASTQC2_PE {
     tag "FASTQC (pe) on $sample_id"
+    publishDir params.outdir, mode: 'copy', pattern: 'reports/post_alignment_fastqc_reports/*'
 
     input:
     tuple val(sample_id), path(bam_pe), path(bai_pe), path(bam_se), path(bai_se), path(metrics_pe), path(metrics_se)
  
     output:
-    path "post_alignment_fastqc_logs_${sample_id}"
+    path "post_alignment_fastqc_logs_${sample_id}", emit: logs
+    path "reports/post_alignment_fastqc_reports/*"
  
     script:
     """
     TEMP=\$(mktemp -d --tmpdir=.)
     mkdir -p post_alignment_fastqc_logs_${sample_id}
+    mkdir -p reports/post_alignment_fastqc_reports
     env _JAVA_OPTIONS='-XX:-UsePerfData' fastqc ${bam_pe} ${bam_se} -o post_alignment_fastqc_logs_${sample_id} --dir \$TEMP
+    cp post_alignment_fastqc_logs_${sample_id}/${sample_id}*.html reports/post_alignment_fastqc_reports
     """
 }
 
 // Post-alignment QC (se)
 process FASTQC2_SE {
     tag "FASTQC (se) on $sample_id"
+    publishDir params.outdir,  mode:'copy', pattern: 'reports/post_alignment_fastqc_reports/*'
 
     input:
     tuple val(sample_id), path(bam), path(bai), path(metrics)
  
     output:
-    path "post_alignment_fastqc_logs_${sample_id}"
+    path "post_alignment_fastqc_logs_${sample_id}", emit: logs
+    path "reports/post_alignment_fastqc_reports/*"
  
     script:
     """
     TEMP=\$(mktemp -d --tmpdir=.)
     mkdir -p post_alignment_fastqc_logs_${sample_id}
+    mkdir -p reports/post_alignment_fastqc_reports
     env _JAVA_OPTIONS='-XX:-UsePerfData' fastqc ${bam} -o post_alignment_fastqc_logs_${sample_id} --dir \$TEMP
+    cp post_alignment_fastqc_logs_${sample_id}/${sample_id}*.html reports/post_alignment_fastqc_reports
     """
 }
 
@@ -692,7 +704,7 @@ process RCN_TO_ACN_WX {
 }
 
 process ICHOR_CNA {
-    tag "ichorCNA ($bamtype) on $sample_id"
+    tag "ichorCNA ($bamtype) on $sample_id with bin size $binsize kb"
     publishDir params.outdir, mode:'copy'   
  
     input: 
@@ -700,13 +712,16 @@ process ICHOR_CNA {
 
     output:
     tuple path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.correctedDepth.txt"), path("relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.seg"), val(sample_id), val(bamtype), val(binsize), emit: results
-    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/*"
+    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.cna.seg"
+    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.correctedDepth.txt"
+    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.seg"
+    path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/${sample_id}.seg.txt"
     path "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/**/*"
  
     script:
     def binsize_bases = binsize.toInteger() * 1000
     def centromere_file
-    if ("${params.genome}" == "hg19") {
+    if ("${params.genome}" == "hg19" || "${params.genome}" == "GRCh37") {
 	centromere_file = "GRCh37.p13_centromere_UCSC-gapTable.txt"
     } else {
 	centromere_file = "GRCh38.GCA_000001405.2_centromere_acen.txt"
@@ -715,7 +730,7 @@ process ICHOR_CNA {
     mkdir -p "relative_cns/ichorCNA/${bamtype}/${binsize}kb/${sample_id}/"
     bamindex_file=`readlink -f "${bamindex}"`
     bam_file=`readlink -f "${bam}"`
-    flock --verbose --wait 120 -E 3 "\${bamindex_file}.lock" cp -n \${bamindex_file} \${bamindex_file%.bai}.bam.bai    
+    flock --verbose --wait 30 -E 3 "\${bamindex_file}.lock" cp -n \${bamindex_file} \${bamindex_file%.bai}.bam.bai    
 
     readCounter --window "${binsize_bases}" --quality 20 \
     --chromosome "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,X" \
@@ -811,9 +826,9 @@ workflow {
     // }
     
     // reads_ch.view()
-    fastqc1_ch = FASTQC1(reads_ch)
+    FASTQC1(reads_ch)
     // fastqc1_ch.view()
-    MULTIQC1(fastqc1_ch.collect())
+    MULTIQC1(FASTQC1.out.logs.collect())
 
     if (params.pairedend) {
         trimmed_ch = TRIMMOMATIC_PE(reads_ch)
@@ -839,12 +854,14 @@ workflow {
         sort_ch = SORT_INDEX_PE(align_ch)
         markdup_ch = MARKDUP_PE(sort_ch)
         indcovflag_ch = INDCOVFLAG_PE(markdup_ch)
-        fastqc2_ch = FASTQC2_PE(markdup_ch)
+        // fastqc2_ch = FASTQC2_PE(markdup_ch)
+        FASTQC2_PE(markdup_ch)
     } else {
         sort_ch = SORT_INDEX_SE(align_ch)
         markdup_ch = MARKDUP_SE(sort_ch)
         indcovflag_ch = INDCOVFLAG_SE(markdup_ch)
-        fastqc2_ch = FASTQC2_SE(markdup_ch)
+        // fastqc2_ch = FASTQC2_SE(markdup_ch)
+        FASTQC2_SE(markdup_ch)
     }
 
     if (params.runqdnaseq) {
@@ -908,11 +925,12 @@ workflow {
     if (params.pairedend) {
         metrics = markdup_ch.map { tuple -> [tuple[5], tuple[6]] }
         flagstats = indcovflag_ch.map { tuple -> [tuple[2], tuple[4]] }
+        combined_ch = metrics.mix(flagstats, FASTQC2_PE.out.logs).collect()
     } else {
         metrics = markdup_ch.map { tuple -> tuple[3] }
         flagstats = indcovflag_ch.map { tuple -> tuple[2] }
+        combined_ch = metrics.mix(flagstats, FASTQC2_SE.out.logs).collect()
     }
-    combined_ch = metrics.mix(flagstats, fastqc2_ch).collect()
 
     multiqc_config_ch = Channel.fromPath(params.multiqc_config, checkIfExists: true, type: 'file')
 
