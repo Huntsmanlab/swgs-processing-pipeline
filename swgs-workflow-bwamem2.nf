@@ -790,14 +790,14 @@ process COMBINE_ICHOR {
     """
 }
 
-workflow {
-    // Make some channels for the needed params, reads files, and scripts
-    binsizes_ch = Channel.from(params.binsizes)
-    qdnaseq_script_ch = file("$projectDir/scripts/runQDNAseq.R")
-    acn_script_ch = file("$projectDir/scripts/runACN.R")
-    qdna_bins_script_ch = file("$projectDir/scripts/gen_bin_annot.R")
-    azure_script_ch = file("$projectDir/scripts/downloadAZ.R")
-    ichor_script_ch = file("$projectDir/scripts/process_ichor.R")
+
+workflow alignment {
+
+    take:
+    azure_script_ch
+     
+
+    main:
 
     if (params.from_azure) {
         az_ch = AZURE_DOWNLOAD(azure_script_ch)
@@ -807,13 +807,16 @@ workflow {
             match_ch = Channel.fromPath(params.samples_csv, checkIfExists: true)
             reads_ch = match_ch.splitCsv(skip: 1).map { row -> [row[0], row[1..-1]] }
         } else {
-            reads_ch = Channel
-                .fromFilePairs(params.reads, checkIfExists: true, size:-1) { 
-                    file -> file.name.replaceAll(params.rm_regex, "")
-                }
+            if (params.pairedend) {
+                reads_ch = Channel.fromFilePairs("${params.reads}/*/*_{1,2}.fastq.gz")
+                //reads_ch.view()
+            } else {
+                reads_ch = Channel.fromFilePairs("${params.reads}/*/*_{1,2}.fastq.gz", size: -1)
+                //reads_ch.view()
+            } 
         }
     }
-    
+
     // Get the reference genome
     // if (params.genome == 'hg19') {
     //     reference_genome_ch = DOWNLOAD_HG19()
@@ -824,10 +827,8 @@ workflow {
     // } else {
     //     fail "Reference genome is not recognized, please correct input string."
     // }
-    
-    // reads_ch.view()
+
     FASTQC1(reads_ch)
-    // fastqc1_ch.view()
     MULTIQC1(FASTQC1.out.logs.collect())
 
     if (params.pairedend) {
@@ -853,17 +854,52 @@ workflow {
     if (params.pairedend) {
         sort_ch = SORT_INDEX_PE(align_ch)
         markdup_ch = MARKDUP_PE(sort_ch)
-        indcovflag_ch = INDCOVFLAG_PE(markdup_ch)
-        // fastqc2_ch = FASTQC2_PE(markdup_ch)
-        FASTQC2_PE(markdup_ch)
     } else {
         sort_ch = SORT_INDEX_SE(align_ch)
         markdup_ch = MARKDUP_SE(sort_ch)
-        indcovflag_ch = INDCOVFLAG_SE(markdup_ch)
-        // fastqc2_ch = FASTQC2_SE(markdup_ch)
-        FASTQC2_SE(markdup_ch)
     }
+    
+    emit:
+    markdup_ch
 
+}
+
+
+workflow {
+    // Make some channels for the needed params, reads files, and scripts
+    binsizes_ch = Channel.from(params.binsizes)
+    qdnaseq_script_ch = file("$projectDir/scripts/runQDNAseq.R")
+    acn_script_ch = file("$projectDir/scripts/runACN.R")
+    qdna_bins_script_ch = file("$projectDir/scripts/gen_bin_annot.R")
+    azure_script_ch = file("$projectDir/scripts/downloadAZ.R")
+    ichor_script_ch = file("$projectDir/scripts/process_ichor.R")
+
+    // Determine if starting from fastq or bam files
+    if (params.start_bam) {
+        markdup_ch = Channel
+                        .fromPath("${params.bam_path}/**/*")
+                        .map { file ->
+                            def sample_id = file.parent.name
+                            tuple(sample_id, file)
+                        }
+                        .groupTuple()
+                        .map { it -> [it[0]] + it[1] }
+        //markdup_ch.view()
+
+    } else {
+        markdup_ch = alignment(azure_script_ch)
+    }
+    
+    // Get samtools index/coverage/flagstat alignment metrics followed by post-alignment QC reports    
+    if (params.pairedend) {
+        indcovflag_ch = INDCOVFLAG_PE(markdup_ch)
+        FASTQC2_PE(markdup_ch)
+    } else {
+        indcovflag_ch = INDCOVFLAG_SE(markdup_ch)
+        FASTQC2_SE(markdup_ch)
+    } 
+
+    // QDNAseq CN, cellularity and ploidy analysis
     if (params.runqdnaseq) {
         if (params.pairedend) {
             bamlist = markdup_ch.map { tuple -> [["pe", tuple[1]], ["se", tuple[3]]] }.flatMap().groupTuple()
@@ -882,6 +918,7 @@ workflow {
         }
     }
 
+    // WisecondorX CN
     if (params.runwisex) {
         if (params.pairedend) {
             bamlist = markdup_ch.map { tuple -> [["pe", tuple[1]], ["se", tuple[3]]] }.flatMap().groupTuple()
@@ -900,6 +937,7 @@ workflow {
         }
     }
 
+    // ichor CN
     if (params.runichor) {
 	if (params.pairedend) {
             bamlist = markdup_ch.map { vals -> [[vals[0], "pe", vals[1], vals[2]], [vals[0], "se", vals[3], vals[4]]] }.flatMap()
@@ -933,6 +971,5 @@ workflow {
     }
 
     multiqc_config_ch = Channel.fromPath(params.multiqc_config, checkIfExists: true, type: 'file')
-
     MULTIQC2(combined_ch, multiqc_config_ch)
 }
