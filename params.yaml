@@ -9,19 +9,25 @@ pairedend: true
 # Trim reads to 50bp
 crop50: false
 
-# Azure Data
+# Is the starting input aligned (i.e. bam files)?
+start_bam: false 
+# Path to directory containing bam files
+bam_path: "${baseDir}/path/to/bams"
+
+## How fastq data is inputted (if applicable) ##
+# 1) Stored on Azure - requires csv with 'sample_id', 'az_url' columns
 from_azure: false
 # Path to CSV file with sample_id and az_url columns
 az_csv: "${baseDir}/path/to/csv"
 
+# 2) Stored locally - requires csv with 'sample_id', 'read1', 'read2' for paired-end or 'sample_id', 'read' for single-ended reads
 # Local Data
 use_csv: true
 # Path to CSV file with sample_id, read1, read2 or read (for SE data)
 samples_csv: "${baseDir}/path/to/csv"
-# Glob pattern for local FASTQ files (e.g. '/path/to/reads/**.{fastq,fq,fastq.gz,fq.gz}')
-reads: "${baseDir}/path/to/reads/*"
-# A regex pattern passed to replaceAll(<regex>, ''). Extracts everything minus the pattern and extensions as the sample ID.
-rm_regex: "(_1_|_2_).*"
+
+# 3) Stored locally - uses glob pattern 
+reads: "${baseDir}/path/to/reads"
 
 # Reference Genome
 genome: "hg19"
