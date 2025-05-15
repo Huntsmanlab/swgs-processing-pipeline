@@ -9,8 +9,20 @@ pairedend: true
 # Trim reads to 50bp
 crop50: false
 
+# Input/output and general config
+outdir: "${baseDir}/results"
+indir: "${baseDir}/input"
+# Only bwamem2 is supported at the moment
+aligner: "bwamem2"
+
+# MultiQC config
+multiqc_config: "${baseDir}/multiqc_config.yaml"
+
 # Is the starting input aligned (i.e. bam files)?
-start_bam: false 
+start_bam: false
+use_csv_bam: true 
+# Path to CSV file with sample_id and sample_path columns
+samples_csv: "${baseDir}/path/to/csv"
 # Path to directory containing bam files
 bam_path: "${baseDir}/path/to/bams"
 
@@ -22,7 +34,7 @@ az_csv: "${baseDir}/path/to/csv"
 
 # 2) Stored locally - requires csv with 'sample_id', 'read1', 'read2' for paired-end or 'sample_id', 'read' for single-ended reads
 # Local Data
-use_csv: true
+use_csv_fastq: true
 # Path to CSV file with sample_id, read1, read2 or read (for SE data)
 samples_csv: "${baseDir}/path/to/csv"
 
@@ -73,12 +85,3 @@ ichor_ploidy: "c(2, 3, 4, 5)"
 ichor_normal: "c(0.5, 0.6, 0.7, 0.8, 0.9)"
 # number of CN states
 ichor_maxCN: 5
-
-# Input/output and general config
-outdir: "${baseDir}/results"
-indir: "${baseDir}/input"
-# Only bwamem2 is supported at the moment
-aligner: "bwamem2"
-
-# MultiQC config
-multiqc_config: "${baseDir}/multiqc_config.yaml"

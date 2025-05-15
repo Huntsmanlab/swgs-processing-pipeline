@@ -26,9 +26,8 @@ log.info """\
 
 S H A L L O W   W G S   C N - C A L L I N G  -  N F    v 2.1 
 ================================
-genome   : $params.ref_path
-reads    : $params.reads
-results  : $params.outdir
+ref genome : $params.ref_path
+results    : $params.outdir
 """
 
 
@@ -360,26 +359,26 @@ process MARKDUP_PE {
     mkdir -p "processing_outputs/${sample_id}"
 
     if [ ${params.crop50} = true ]; then
-        java -Xmx16g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
+        java -Xmx32g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
             -I ${bam_pe} \
             -O processing_outputs/${sample_id}/${sample_id}.pe.50bp.bwa.sorted.mkdup.bam \
             -M processing_outputs/${sample_id}/${sample_id}.pe.50bp.marked_duplicates.metrics.txt \
             --CREATE_INDEX true \
             --TMP_DIR \$TEMP
-        java -Xmx16g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
+        java -Xmx32g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
             -I ${bam_se} \
             -O processing_outputs/${sample_id}/${sample_id}.se.50bp.merged.sorted.mkdup.bam \
             -M processing_outputs/${sample_id}/${sample_id}.se.50bp.marked_duplicates.metrics.txt \
             --CREATE_INDEX true \
             --TMP_DIR \$TEMP
     else
-        java -Xmx16g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
+        java -Xmx32g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
             -I ${bam_pe} \
             -O processing_outputs/${sample_id}/${sample_id}.pe.bwa.sorted.mkdup.bam \
             -M processing_outputs/${sample_id}/${sample_id}.pe.marked_duplicates.metrics.txt \
             --CREATE_INDEX true \
             --TMP_DIR \$TEMP
-        java -Xmx16g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
+        java -Xmx32g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
             -I ${bam_se} \
             -O processing_outputs/${sample_id}/${sample_id}.se.merged.sorted.mkdup.bam \
             -M processing_outputs/${sample_id}/${sample_id}.se.marked_duplicates.metrics.txt \
@@ -407,13 +406,13 @@ process MARKDUP_SE {
     mkdir -p "processing_outputs/${sample_id}"
 
     if [ ${params.crop50} = true ]; then
-        java -Xmx16g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
+        java -Xmx32g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
             I=${bam} \
             O=processing_outputs/${sample_id}/${sample_id}.se.50bp.bwa.sorted.mkdup.bam \
             M=processing_outputs/${sample_id}/${sample_id}.se.50bp.marked_duplicates.metrics.txt \
             CREATE_INDEX=true
     else
-        java -Xmx16g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
+        java -Xmx32g -XX:-UsePerfData -jar /usr/picard/picard.jar MarkDuplicates \
             I=${bam} \
             O=processing_outputs/${sample_id}/${sample_id}.se.bwa.sorted.mkdup.bam \
             M=processing_outputs/${sample_id}/${sample_id}.se.marked_duplicates.metrics.txt \
@@ -795,24 +794,24 @@ workflow alignment {
 
     take:
     azure_script_ch
-     
 
     main:
 
+    // input files are stored on azure
     if (params.from_azure) {
         az_ch = AZURE_DOWNLOAD(azure_script_ch)
         reads_ch = az_ch[1].splitCsv(skip: 1).map { row -> [row[0], row[1..-1]] }
+
+    // input files are stored locally
     } else {
-        if (params.use_csv) {
+        if (params.use_csv_fastq) {
             match_ch = Channel.fromPath(params.samples_csv, checkIfExists: true)
             reads_ch = match_ch.splitCsv(skip: 1).map { row -> [row[0], row[1..-1]] }
         } else {
             if (params.pairedend) {
                 reads_ch = Channel.fromFilePairs("${params.reads}/*/*_{1,2}.fastq.gz")
-                //reads_ch.view()
             } else {
-                reads_ch = Channel.fromFilePairs("${params.reads}/*/*_{1,2}.fastq.gz", size: -1)
-                //reads_ch.view()
+                reads_ch = Channel.fromFilePairs("${params.reads}/*/*.fastq.gz", size: -1)
             } 
         }
     }
@@ -828,15 +827,18 @@ workflow alignment {
     //     fail "Reference genome is not recognized, please correct input string."
     // }
 
+    // complete pre-aligned QC
     FASTQC1(reads_ch)
     MULTIQC1(FASTQC1.out.logs.collect())
 
+    // trim reads
     if (params.pairedend) {
         trimmed_ch = TRIMMOMATIC_PE(reads_ch)
     } else {
         trimmed_ch = TRIMMOMATIC_SE(reads_ch)
     }
 
+    // align reads to reference genome
     if (params.aligner == 'bwamem2') {
         // bwa_reference_genome_ch = INDEX_BWAREF(reference_genome_ch)
         // bwa_reference_genome_ch.view()
@@ -861,12 +863,11 @@ workflow alignment {
     
     emit:
     markdup_ch
-
 }
 
-
 workflow {
-    // Make some channels for the needed params, reads files, and scripts
+
+    // Make some channels for the binsizes and scripts
     binsizes_ch = Channel.from(params.binsizes)
     qdnaseq_script_ch = file("$projectDir/scripts/runQDNAseq.R")
     acn_script_ch = file("$projectDir/scripts/runACN.R")
@@ -874,23 +875,70 @@ workflow {
     azure_script_ch = file("$projectDir/scripts/downloadAZ.R")
     ichor_script_ch = file("$projectDir/scripts/process_ichor.R")
 
-    // Determine if starting from fastq or bam files
+    // determine starting input (i.e. fastq or bam)
     if (params.start_bam) {
-        markdup_ch = Channel
-                        .fromPath("${params.bam_path}/**/*")
-                        .map { file ->
-                            def sample_id = file.parent.name
-                            tuple(sample_id, file)
-                        }
-                        .groupTuple()
-                        .map { it -> [it[0]] + it[1] }
-        //markdup_ch.view()
 
+        // collect bams + associated files from path in csv
+        if (params.use_csv_bam) {
+            csv_ch = Channel.fromPath(params.samples_csv, checkIfExists: true)
+            paths_ch = csv_ch.splitCsv(skip: 1).map { row -> [row[0], row[1]] }
+            paths_ch = paths_ch.map { sample_id, path ->
+                                def pattern = "${path}/*"
+                                tuple(sample_id, pattern) }
+            paths_ch = paths_ch.flatMap { sample_id, pattern -> 
+                                def files = file(pattern)
+                                files.collect { file -> tuple(sample_id, file) } }
+                               .groupTuple()
+        // collect bams + associated files from path in params.yaml
+        } else {
+            paths_ch = Channel.fromPath("${params.bam_path}/**/*")
+                              .map { file ->
+                               def sample_id = file.parent.name
+                               tuple(sample_id, file) }
+                              .groupTuple()
+        }
+
+        // create seperate channels for required bam + associted files
+        // necessary to create markdup_ch w/ files in req. order
+        if (params.pairedend) {
+            pe_bam_ch = paths_ch.map { sample_id, files ->
+                                def pe_bam = files.find { it.getName() ==~ /.*\.pe\..*\.bam/ }
+                                [sample_id, pe_bam] }
+            pe_bai_ch = paths_ch.map { sample_id, files ->
+                                def pe_bai = files.find { it.getName() ==~ /.*\.pe\..*\.bai/ }
+                               [sample_id, pe_bai] }
+            se_bam_ch = paths_ch.map { sample_id, files ->
+                                def se_bam = files.find { it.getName() ==~ /.*\.se\..*\.bam/ }
+                                [sample_id, se_bam] }
+            se_bai_ch = paths_ch.map { sample_id, files ->
+                                def se_bai = files.find { it.getName() ==~ /.*\.se\..*\.bai/ }
+                                [sample_id, se_bai] }
+            pe_txt_ch = paths_ch.map { sample_id, files ->
+                                def pe_txt = files.find { it.getName() ==~ /.*\.pe\..*\.txt/ }
+                                [sample_id, pe_txt] }
+            se_txt_ch = paths_ch.map { sample_id, files ->
+                                def se_txt = files.find { it.getName() ==~ /.*\.se\..*\.txt/ }
+                               [sample_id, se_txt] }
+            markdup_ch = pe_bam_ch.join(pe_bai_ch).join(se_bam_ch).join(se_bai_ch).join(pe_txt_ch).join(se_txt_ch)
+        } else {
+            se_bam_ch = paths_ch.map { sample_id, files ->
+                                def se_bam = files.find { it.getName() ==~ /.*\.se\..*\.bam/ }
+                                [sample_id, se_bam] }
+            se_bai_ch = paths_ch.map { sample_id, files ->
+                                def se_bai = files.find { it.getName() ==~ /.*\.se\..*\.bai/ }
+                                [sample_id, se_bai] }
+            se_txt_ch = paths_ch.map { sample_id, files ->
+                                def se_txt = files.find { it.getName() ==~ /.*\.se\..*\.txt/ }
+                                [sample_id, se_txt] }
+            markdup_ch = se_bam_ch.join(se_bai_ch).join(se_txt_ch)
+        }
+
+    // starting input is unaligned (i.e. fastq)
     } else {
         markdup_ch = alignment(azure_script_ch)
     }
     
-    // Get samtools index/coverage/flagstat alignment metrics followed by post-alignment QC reports    
+    // generate samtools index/coverage/flagstat alignment metrics and subsequent post-alignment QC reports    
     if (params.pairedend) {
         indcovflag_ch = INDCOVFLAG_PE(markdup_ch)
         FASTQC2_PE(markdup_ch)
@@ -903,6 +951,7 @@ workflow {
     if (params.runqdnaseq) {
         if (params.pairedend) {
             bamlist = markdup_ch.map { tuple -> [["pe", tuple[1]], ["se", tuple[3]]] }.flatMap().groupTuple()
+            bamlist.view()
 	} else {
             bamlist = markdup_ch.map { tuple -> ["se", tuple[1]] }.groupTuple()
         }
@@ -942,8 +991,8 @@ workflow {
 	if (params.pairedend) {
             bamlist = markdup_ch.map { vals -> [[vals[0], "pe", vals[1], vals[2]], [vals[0], "se", vals[3], vals[4]]] }.flatMap()
 	    bams_ch = binsizes_ch.combine(bamlist).groupTuple(by: 3).transpose()
-            bams_ch_filtered = bams_ch.filter { val -> val[0] in [10, 50, 500, 1000] } 
-	    ICHOR_CNA(bams_ch_filtered)
+            bams_ch_filtered = bams_ch.filter { val -> val[0] in [10, 50, 500, 1000] }
+            ICHOR_CNA(bams_ch_filtered)
 	    PROCESS_ICHOR(ichor_script_ch, ICHOR_CNA.out.results) 
 	    tsv_ch = PROCESS_ICHOR.out.groupTuple(by: [0, 1])
             COMBINE_ICHOR(tsv_ch)
