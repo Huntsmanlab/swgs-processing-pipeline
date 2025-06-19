@@ -1,8 +1,5 @@
 # The following pipeline parameters specify the default params and reference genome.
 
-# Is this being run on the cluster 
-use_slurm: true
-
 # Single or paired-end reads? (Default: Paired-End, if false then single-ended data expected)
 pairedend: true
 
