@@ -1,6 +1,6 @@
 process MULTIQC_POSTALIGN {
 	tag "post-alignment multiqc"
-    publishDir params.outdir, mode:'copy'
+    publishDir params.output_directory, mode:'copy'
 	container 'docker://quay.io/biocontainers/multiqc:1.3--py35_2'
 	cpus 1
 	memory '8 GB'

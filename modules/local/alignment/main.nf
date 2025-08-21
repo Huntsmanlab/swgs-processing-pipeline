@@ -1,5 +1,5 @@
 process ALIGNMENT {
-    tag "alignment of $sample_id"
+    tag "Aligning ${sample_id}"
 	container 'docker://clinicalgenomics/bwa-mem2:2.2.1'
 	cpus 16
 	memory '64 GB'
@@ -15,6 +15,6 @@ process ALIGNMENT {
     script:
     """
 	mkdir -p "alignment_${sample_id}"
-    bwa-mem2 mem -M -t ${task.cpus} ${params.reference_genome} ${reads} -R '@RG\\tID:${sample_id}_ID\\tSM:${sample_id}\\tLB:${sample_id}_LB\\tPL:ILLUMINA' -o alignment_${sample_id}/${sample_id}.bwa.sam 
+    bwa-mem2 mem -M -t ${task.cpus} ${params.reference_genome_path} ${reads} -R '@RG\\tID:${sample_id}_ID\\tSM:${sample_id}\\tLB:${sample_id}_LB\\tPL:ILLUMINA' -o alignment_${sample_id}/${sample_id}.bwa.sam 
     """      
 }
