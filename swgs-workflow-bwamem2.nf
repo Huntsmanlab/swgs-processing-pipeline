@@ -18,7 +18,7 @@
  * and shallow whole genome sequencing identifies therapeutic opportunities 
  * in p53abn endometrial cancers"
  * 
- * Maxwell Douglas 
+ * Authors: Maxwell Douglas, Branden Lynch, Ding Ma and Sheila Nicholson 
  */
 
 
@@ -683,7 +683,7 @@ process RCN_TO_ACN_QDNA {
 // Scale relative copy-number to absolute copy-number from WisecondorX output
 process RCN_TO_ACN_WX {
     publishDir params.outdir, mode:'copy'
-
+				
     input:
     path(script)
     path(rcn_dir)
@@ -816,16 +816,6 @@ workflow alignment {
         }
     }
 
-    // Get the reference genome
-    // if (params.genome == 'hg19') {
-    //     reference_genome_ch = DOWNLOAD_HG19()
-    // } else if ( params.genome == 'hg38') {
-    //     reference_genome_ch = DOWNLOAD_HG38()
-    // } else if (params.genome == 'mm10') {
-    //     reference_genome_ch = DOWNLOAD_MM10()
-    // } else {
-    //     fail "Reference genome is not recognized, please correct input string."
-    // }
 
     // complete pre-aligned QC
     FASTQC1(reads_ch)
