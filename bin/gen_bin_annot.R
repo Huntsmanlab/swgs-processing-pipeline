@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 # Required packages
 library(QDNAseq)
 library(Biobase)

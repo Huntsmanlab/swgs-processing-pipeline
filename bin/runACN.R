@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 suppressPackageStartupMessages({
   library(QDNAseq)
   library(Biobase)
@@ -7,6 +9,7 @@ suppressPackageStartupMessages({
   library(stringr)
   library(future)
   library(CGHcall)
+  library(data.table)
 })
 
 # Access command-line arguments
