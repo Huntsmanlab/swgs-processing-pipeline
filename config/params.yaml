@@ -1,0 +1,68 @@
+### General pipeline paramaters:
+
+# input csv must contain:
+# 1) sample_id,read1,read2(optional)
+# 2) sample_id,azure_url
+# 3) sample_id,path/to/bam,path/to/bai,path/to/dups.txt
+input_csv: '/path/to/input.csv'
+
+from_azure: false
+
+paired_end: true
+
+reference_genome_path: '/path/to/ref_genome.fa'
+
+reference_genome_version: 'hg38'
+
+crop_50: false
+
+input_directory: '/path/to/input_dir'
+
+output_directory: '/path/to/output_dir'
+
+input_bam: false 
+
+### parameters specific to post alignment analyses
+bin_sizes: [50, 100]
+
+    ## QDNAseq parameters ##
+
+run_qdnaseq: true
+bin_annotations: '/path/to/bin/annotations'
+
+# note: the following parameters are only required if create_bin_annotations: true
+create_bin_annotations: false
+# bam files for normal samples
+qd_nbams: '/path/to/bams'
+
+# mappability tracks (bigWig)
+qd_mappability: '/path/to/mappability'
+
+# problematic regions blacklist (bed)
+qd_blacklist: '/path/to/blacklist'
+
+# bigWigAverageOverBed binary
+qd_bwgavgbed: '/path/to/bigWigAverageBed'
+
+    ## WisecondorX parameters ## 
+
+# note: if samples are aligned to hg38 do not run WisecondorX
+run_wisecondorx: true
+wcx_ref: '/projects/molonc/scratch/dma/swgs-processing-pipeline/test_data/ref/npz/refs/'
+
+# note: the following parameters are only required if wcx_create_ref: true
+wcx_create_ref: false
+
+# npz files for normal samples
+wcx_normals: 'path/to/normals'
+
+# create new references from bams
+wcx_ref_from_bams: false
+wcx_norm_bams: 'path/to/ref/bams'
+
+    ## ichor parameters ##
+
+run_ichor: true
+ichor_ploidy: "c(2, 3, 4, 5)"
+ichor_normal: "c(0.5, 0.6, 0.7, 0.8, 0.9)"
+ichor_maxCN: 5
