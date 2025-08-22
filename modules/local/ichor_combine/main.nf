@@ -9,14 +9,14 @@ process ICHOR_COMBINE {
     tuple val(bamtype), val(binsize), path(tsv_files)
 
     output:
-    path "relative_cn/ichorCNA/combined_results/ichor_combined_${binsize}kb_${bamtype}_rCN.tsv"
+    path "relative_cn/ichor/combined_results/ichor_combined_${binsize}kb_${bamtype}_rCN.tsv"
 
     script:
     """
-    mkdir -p "relative_cn/ichorCNA/combined_results/"
-    head -n 1 ${tsv_files[0]} > "relative_cn/ichorCNA/combined_results/ichor_combined_${binsize}kb_${bamtype}_rCN.tsv"
+    mkdir -p "relative_cn/ichor/combined_results/"
+    head -n 1 ${tsv_files[0]} > "relative_cn/ichor/combined_results/ichor_combined_${binsize}kb_${bamtype}_rCN.tsv"
     for FILE in ${tsv_files}; do
-	tail -n +2 \$FILE >> "relative_cn/ichorCNA/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
+	tail -n +2 \$FILE >> "relative_cn/ichor/combined_results/combined_${binsize}kb_${bamtype}_rCN.tsv"
     done
     """
 }

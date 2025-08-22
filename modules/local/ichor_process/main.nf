@@ -10,12 +10,12 @@ process ICHOR_PROCESS {
     tuple path(bins_file), path(segs_file), val(sample_id), val(bamtype), val(binsize)
 
     output:
-    tuple val(bamtype), val(binsize), path("relative_cn/ichorCNA/${bamtype}/${binsize}kb/results/${sample_id}_rCN.tsv")
+    tuple val(bamtype), val(binsize), path("relative_cn/ichor/${bamtype}/${binsize}kb/results/${sample_id}_rCN.tsv")
     
     script:
     """
-    mkdir -p "relative_cn/ichorCNA/${bamtype}/${binsize}kb/results"
-    process_ichor.R ${sample_id} ${bins_file} ${segs_file} "relative_cn/ichorCNA/${bamtype}/${binsize}kb/results/" ${params.reference_genome_version}     
+    mkdir -p "relative_cn/ichor/${bamtype}/${binsize}kb/results"
+    process_ichor.R ${sample_id} ${bins_file} ${segs_file} "relative_cn/ichor/${bamtype}/${binsize}kb/results/" ${params.reference_genome_version}     
     """
 
 }
