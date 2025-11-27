@@ -1,5 +1,5 @@
 process CN_ICHOR {
-    publishDir params.output_directory, mode:'copy'
+    publishDir params.output_directory, mode:'copy', pattern: "relative_cn/ichor/**"
     tag "Completing copy number analysis via ichor"
 	errorStrategy 'retry', maxRetries: 5
     container 'docker://huntsmanlab/ichorcna:latest' 
