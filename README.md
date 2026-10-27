@@ -96,9 +96,9 @@ nextflow run swgs-processing-pipeline \
 
 ### input_csv format (Azure - Sample Sheet - FASTQ)
 
-- `input_csv` - path to a csv file with the columns: 'sample_id', 'azure_url'
+- `input_csv` - path to a csv file with the columns: 'sample_id', 'az_url'
    - 'sample_id' - intended sample ID
-   - 'azure_url' - full url to Azure blob storage location for corresponding sample. FASTQ file(s) will be contained within this blob
+   - 'az_url' - full url to Azure blob storage location for corresponding sample. FASTQ file(s) will be contained within this blob
    - Must contain column header, no row names, no quotes around values
 
 ### input_csv format (Local - Sample Sheet - BAM)
