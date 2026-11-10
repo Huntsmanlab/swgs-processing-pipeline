@@ -20,7 +20,7 @@ bin_sizes: [50, 100]
     ## QDNAseq parameters ##
 
 run_qdnaseq: true
-bin_annotations: '/projects/molonc/huntsman_lab/tblimkie/QDNASeq_bins'
+bin_annotations: '/projects/molonc/huntsman_lab/tblimkie/QDNASeq_bins/rds/'
 
 # note: the following parameters are only required if create_bin_annotations: true
 create_bin_annotations: false
