@@ -5,3 +5,5 @@
 *.nextflow.log*
 *html
 *trace*txt
+
+work/
