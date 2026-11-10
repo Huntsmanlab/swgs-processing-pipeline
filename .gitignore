@@ -1,8 +1,3 @@
-# Ignore directories
-input/
-results/
-expanded_test_data/
-
 # Ignore the ".nextflow" directory
 .nextflow/
 
@@ -10,7 +5,3 @@ expanded_test_data/
 *.nextflow.log*
 *html
 *trace*txt
-
-work/
-
-test_data
