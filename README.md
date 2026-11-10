@@ -85,8 +85,9 @@ nextflow run swgs-processing-pipeline \
 - This pipeline expects raw FASTQ or aligned BAM files from short-read sequencing data (ex. from Illumina)
 - The raw reads are single-end or paired-end. The reads are expected in `fastq` formated files with any one of the following extensions: `XXX.fastq` | `XXX.fastq.gz` | `XXX.fq` | `XXX.fq.gz`
 - This pipeline expects **one file** per sample for single-end read data, and **two files** for paired-end read data. For paired-end, file names should indicate forward and reverse read
-- Refer to [data retrieval](#data-retrieval-azure) parameters for how FASTQ files can be provided
-- The sample sheet (detailed below) must contain column headers, no row names, and have no quotes around the values
+- Refer to the next section for how FASTQ files can be provided
+- The sample sheet (detailed below) must contain column headers, no row names, and have no quotes around the values. Extra columns will cause errors, so only provide the necessary information
+- For all files (sample sheet, parameters, etc.) it is recommended to use absolute and not relative paths
 
 ### input_csv format (Local - FASTQ)
 
