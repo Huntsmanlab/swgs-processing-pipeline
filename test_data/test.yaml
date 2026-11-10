@@ -4,14 +4,14 @@
 # 1) sample_id,read1,read2(optional)
 # 2) sample_id,azure_url
 # 3) sample_id,path/to/bam,path/to/bai,path/to/dups.txt
-input_csv: 'test_data/samples.csv'
+input_csv: '/projects/molonc/scratch/tblimkie/Pipelines/swgs-processing-pipeline/test_data/samples.csv'
 from_azure: false
 paired_end: false
 reference_genome_path: '/projects/molonc/scratch/tblimkie/Genomes/GRCh38/Homo_sapiens_assembly38.fasta'
 reference_genome_version: 'hg38'
 crop_50: false
-input_directory: 'test_data/input'
-output_directory: 'test_data/output'
+input_directory: '/projects/molonc/scratch/tblimkie/Pipelines/swgs-processing-pipeline/test_data/input'
+output_directory: '/projects/molonc/scratch/tblimkie/Pipelines/swgs-processing-pipeline/test_data/output'
 input_bam: false 
 
 ### parameters specific to post alignment analyses
