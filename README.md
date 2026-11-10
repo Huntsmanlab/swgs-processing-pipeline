@@ -94,14 +94,12 @@ nextflow run swgs-processing-pipeline \
 - `input_csv` - path to a csv file with the columns: 'sample_id', 'read1', 'read2' for paired-end, or 'sample_id', 'read' for single-end
    - 'sample_id' - intended sample ID
    - 'read/read1/read2' - full path to a FASTQ file. For paired-end, 'read1' should be forward and 'read2 should be reverse
-   - Must contain column header, no row names, no quotes around values
 
 ### input_csv format (Azure - FASTQ)
 
 - `input_csv` - path to a csv file with the columns: 'sample_id', 'az_url'
    - 'sample_id' - intended sample ID
    - 'az_url' - full URL to Azure blob storage location for corresponding sample. FASTQ file(s) will be contained within this blob
-   - Must contain column header, no row names, no quotes around values
 
 ### input_csv format (Local - BAM)
 
