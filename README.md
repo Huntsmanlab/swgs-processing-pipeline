@@ -132,7 +132,7 @@ Each parameter in [General](#General) must be specified. Only parameters for the
 ### QDNAseq parameters
 
 - `runqdnaseq` - setting to `true` will perform copy-number analysis using the QDNAseq package
-- `bin_annotations` - path to a directory containing `.rds` bin annotation files to be used with QDNAseq. A bin annotation must exist for each bin size in `binsizes`, and if running in paired-end mode, for each combination of binsize and pe/se. File names must include the substrings '{binsze}kb' indicating the binsize, and 'pe' or 'se' indicating paired- vs single-end, case insensitive. Must ONLY contain bin annotations for the desired genome build and read length
+- `bin_annotations` - path to a directory containing `.rds` bin annotation files to be used with QDNAseq. A bin annotation must exist for each bin size in `binsizes` and should match the paired end option, i.e. 'se' or 'pe' files if provided fastq/BAM inputs are from single-end or paired-end data. File names must include the substrings '{binsze}kb' indicating the binsize, and 'pe' or 'se' indicating paired- vs single-end, case insensitive. Must ONLY contain bin annotations for the desired genome build and read length
 - `create_bin_annotations` - setting to `true` will generate new bin annotations, ignores `binannos`. Note: very slow! The remaining QDNAseq parameters are only relevant for bin annotation.
 - `qd_nbams` - path to bam files of normal samples to be used for bin annotations. Files must have '.se' or '.pe' as part of the file extension, indicating single- vs paired-end. Paired-end mode expects both single- and paired-end bams
 - `qd_mappability` - path to the mappability track to be used for bin annotations, must be in bigwig format
